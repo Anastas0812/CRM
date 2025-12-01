@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>CRM</title>
+</head>
+<body>
+  <div class="goods-container">
+    <div class="header">Товары
+      <button class="btn-add-good">+</button>
+    </div>
+    <table>
+      <tr>
+        <th>Название</th>
+        <th>Стоимость</th>
+        <th>Действия</th>
+      </tr>
+    </table>
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <div class="form-group">
+          <label for="productName">Название</label>
+          <input type="text" id="productName" placeholder="Введите название товара">
+        </div>
+        
+        <div class="form-group">
+          <label for="productPrice">Стоимость</label>
+          <input id="productPrice" placeholder="0" min="0">
+        </div>
+        
+        <div class="modal-buttons">
+          <button class="btn-save">Сохранить</button>
+          <button class="btn-cancel">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+</body>
+</html>

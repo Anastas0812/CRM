@@ -1,0 +1,139 @@
+name: Netology AHJ
+
+on:
+  push:
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  eslint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: "yarn"
+      - run: yarn
+      - run: yarn lint
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: "yarn"
+      - run: yarn
+      - run: yarn test
+
+  e2e:
+    runs-on: macos-latest
+    needs: [eslint, test]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: "yarn"
+
+      - name: Debug environment
+        run: |
+          echo "=== DEBUG INFO ==="
+          echo "OS: $(uname -a)"
+          echo "Node: $(node --version)"
+          echo "Yarn: $(yarn --version)"
+          echo "Running on: $RUNNER_OS"
+          echo "CI: $CI"
+          echo "==================="
+
+      - run: yarn
+
+      - name: Build project
+        run: yarn build
+
+      - name: Install http-server
+        run: yarn add -D http-server
+
+      - name: Run E2E tests
+        timeout-minutes: 10
+        run: |
+          echo "Starting E2E test process..."
+
+          echo "Checking port 8080..."
+          lsof -ti:8080 | xargs kill -9 2>/dev/null || true
+
+          echo "Starting HTTP server..."
+          npx http-server dist -p 8080 --silent -a localhost &
+          SERVER_PID=$!
+
+          echo "HTTP server PID: $SERVER_PID"
+
+          echo "Waiting for server to start..."
+          sleep 8
+
+          echo "Testing server connection..."
+          curl -f http://localhost:8080/ || {
+            echo "Server not responding!"
+            ps aux | grep http-server
+            exit 1
+          }
+
+          echo "✅ Server is running"
+
+          echo "Running E2E tests..."
+          yarn e2e --verbose
+
+          echo "✅ E2E tests completed"
+
+          echo "Stopping HTTP server..."
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+
+        env:
+          CI: true
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "false"
+
+  build:
+    needs: [eslint, test]
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: "yarn"
+      - run: yarn
+      - run: yarn build
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "dist"
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
